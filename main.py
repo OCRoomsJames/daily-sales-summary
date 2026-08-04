@@ -438,15 +438,57 @@ other_flat_hotels = [
 ]
 
 if other_flat_hotels:
-    verb = (
-        "finished"
-        if len(other_flat_hotels) == 1
-        else "finished"
+    summary_sentences.append(
+        f"{join_names(other_flat_hotels)} finished "
+        f"essentially flat compared with last year."
     )
 
-    summary_sentences.append(
-        f"{join_names(other_flat_hotels)} {verb} "
-        f"essentially flat compared with last year."
+
+table_lines = [
+    (
+        f"{'Hotel':<16}"
+        f"{'Revenue':>25}"
+        f"{'ADR':>20}"
+        f"{'RevPAR':>22}"
+        f"{'Rooms':>15}"
+    )
+]
+
+for row in rows:
+    revenue_text = (
+        f"{money(row['revenue_2026'])} / "
+        f"{money(row['revenue_2025'])} "
+        f"{indicator(row['revenue_pct'])}"
+        f"{signed_percent(row['revenue_pct'])}"
+    )
+
+    adr_text = (
+        f"{money(row['adr_2026'])} / "
+        f"{money(row['adr_2025'])} "
+        f"{indicator(row['adr_pct'])}"
+        f"{signed_percent(row['adr_pct'])}"
+    )
+
+    revpar_text = (
+        f"{money(row['revpar_2026'])} / "
+        f"{money(row['revpar_2025'])} "
+        f"{indicator(row['revpar_pct'])}"
+        f"{signed_percent(row['revpar_pct'])}"
+    )
+
+    rooms_text = (
+        f"{row['rooms_2026']} / "
+        f"{row['rooms_2025']} "
+        f"{room_indicator(row['rooms_change'])}"
+        f"{signed_number(row['rooms_change'])}"
+    )
+
+    table_lines.append(
+        f"{row['hotel']:<16}"
+        f"{revenue_text:>25}"
+        f"{adr_text:>20}"
+        f"{revpar_text:>22}"
+        f"{rooms_text:>15}"
     )
 
 
@@ -464,156 +506,82 @@ blocks = [
         "elements": [
             {
                 "type": "mrkdwn",
-                "text": (
-                    f"*{current_date}* compared with *{prior_date}*"
-                ),
+                "text": f"*{current_date}* compared with *{prior_date}*",
             }
         ],
     },
     {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": f"```{chr(10).join(table_lines)}```",
+        },
+    },
+    {
+        "type": "section",
+        "fields": [
+            {
+                "type": "mrkdwn",
+                "text": (
+                    f"*Total Revenue*\n"
+                    f"{money(total_revenue_2026)} vs "
+                    f"{money(total_revenue_2025)}\n"
+                    f"{indicator(total_revenue_pct)} "
+                    f"*{signed_money(total_revenue_change)} "
+                    f"({signed_percent(total_revenue_pct)})*"
+                ),
+            },
+            {
+                "type": "mrkdwn",
+                "text": (
+                    f"*Total Rooms Sold*\n"
+                    f"{total_rooms_2026} vs "
+                    f"{total_rooms_2025}\n"
+                    f"{room_indicator(total_rooms_change)} "
+                    f"*{signed_number(total_rooms_change)}*"
+                ),
+            },
+        ],
+    },
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": (
+                f"*Beach Income:* "
+                f"Park Place {money(park_place_beach)} | "
+                f"Spinnaker {money(spinnaker_beach)} | "
+                f"Combined *{money(combined_beach)}*"
+            ),
+        },
+    },
+    {
         "type": "divider",
     },
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": (
+                "*Management Read*\n"
+                + " ".join(summary_sentences)
+            ),
+        },
+    },
+    {
+        "type": "context",
+        "elements": [
+            {
+                "type": "mrkdwn",
+                "text": (
+                    "_South Beach is shown separately but remains included "
+                    "in the Madison group and five-hotel total. Beach income "
+                    "is not included in room revenue._"
+                ),
+            }
+        ],
+    },
 ]
-
-
-for row in rows:
-    blocks.extend(
-        [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*{row['hotel']}*",
-                },
-            },
-            {
-                "type": "section",
-                "fields": [
-                    {
-                        "type": "mrkdwn",
-                        "text": (
-                            f"*Revenue*\n"
-                            f"{money(row['revenue_2026'])} vs "
-                            f"{money(row['revenue_2025'])}\n"
-                            f"{indicator(row['revenue_pct'])} "
-                            f"*{signed_percent(row['revenue_pct'])}*"
-                        ),
-                    },
-                    {
-                        "type": "mrkdwn",
-                        "text": (
-                            f"*ADR*\n"
-                            f"{money(row['adr_2026'])} vs "
-                            f"{money(row['adr_2025'])}\n"
-                            f"{indicator(row['adr_pct'])} "
-                            f"*{signed_percent(row['adr_pct'])}*"
-                        ),
-                    },
-                    {
-                        "type": "mrkdwn",
-                        "text": (
-                            f"*RevPAR*\n"
-                            f"{money(row['revpar_2026'])} vs "
-                            f"{money(row['revpar_2025'])}\n"
-                            f"{indicator(row['revpar_pct'])} "
-                            f"*{signed_percent(row['revpar_pct'])}*"
-                        ),
-                    },
-                    {
-                        "type": "mrkdwn",
-                        "text": (
-                            f"*Rooms Sold*\n"
-                            f"{row['rooms_2026']} vs "
-                            f"{row['rooms_2025']}\n"
-                            f"{room_indicator(row['rooms_change'])} "
-                            f"*{signed_number(row['rooms_change'])}*"
-                        ),
-                    },
-                ],
-            },
-            {
-                "type": "divider",
-            },
-        ]
-    )
-
-
-blocks.extend(
-    [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "*Five-Hotel Totals*",
-            },
-        },
-        {
-            "type": "section",
-            "fields": [
-                {
-                    "type": "mrkdwn",
-                    "text": (
-                        f"*Revenue*\n"
-                        f"{money(total_revenue_2026)} vs "
-                        f"{money(total_revenue_2025)}\n"
-                        f"{indicator(total_revenue_pct)} "
-                        f"*{signed_money(total_revenue_change)} "
-                        f"({signed_percent(total_revenue_pct)})*"
-                    ),
-                },
-                {
-                    "type": "mrkdwn",
-                    "text": (
-                        f"*Rooms Sold*\n"
-                        f"{total_rooms_2026} vs "
-                        f"{total_rooms_2025}\n"
-                        f"{room_indicator(total_rooms_change)} "
-                        f"*{signed_number(total_rooms_change)}*"
-                    ),
-                },
-            ],
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": (
-                    f"*Beach Income*\n"
-                    f"Park Place: *{money(park_place_beach)}*\n"
-                    f"Spinnaker: *{money(spinnaker_beach)}*\n"
-                    f"Combined: *{money(combined_beach)}*"
-                ),
-            },
-        },
-        {
-            "type": "divider",
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": (
-                    "*Management Read*\n"
-                    + "\n\n".join(summary_sentences)
-                ),
-            },
-        },
-        {
-            "type": "context",
-            "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": (
-                        "_South Beach is shown separately for operating "
-                        "detail but remains included in the Madison group "
-                        "and five-hotel total. Beach income is not included "
-                        "in room revenue._"
-                    ),
-                }
-            ],
-        },
-    ]
-)
 
 
 fallback_text = (
