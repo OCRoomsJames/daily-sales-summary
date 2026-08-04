@@ -17,7 +17,10 @@ CHANNELS = {
 
 
 def latest_sales_message(hotel_name: str, channel_id: str) -> str:
-    response = client.conversations_history(channel=channel_id, limit=100)
+    response = client.conversations_history(
+        channel=channel_id,
+        limit=100,
+    )
 
     for message in response.get("messages", []):
         if message.get("subtype"):
@@ -32,11 +35,18 @@ def latest_sales_message(hotel_name: str, channel_id: str) -> str:
 
 
 def extract_dates(text: str) -> list[str]:
-    return re.findall(r"\b\d{1,2}/\d{1,2}/\d{4}\b", text)
+    return re.findall(
+        r"\b\d{1,2}/\d{1,2}/\d{4}\b",
+        text,
+    )
 
 
 def extract_values(text: str, pattern: str) -> list[float]:
-    matches = re.findall(pattern, text, flags=re.IGNORECASE)
+    matches = re.findall(
+        pattern,
+        text,
+        flags=re.IGNORECASE,
+    )
 
     return [
         float(value.replace(",", ""))
@@ -70,12 +80,6 @@ def extract_standard_property(hotel_name: str, text: str) -> dict:
 
     revpar = extract_values(
         text,
-        r"\bRev\s*Par\b|\bRevPAR\b",
-    )
-
-    # RevPAR needs a separate expression because the amount follows the label.
-    revpar = extract_values(
-        text,
         r"\b(?:Rev\s*Par|RevPAR)\b\s*:?\s*\$?\s*([\d,]+(?:\.\d+)?)",
     )
 
@@ -89,8 +93,11 @@ def extract_standard_property(hotel_name: str, text: str) -> dict:
     ):
         raise RuntimeError(
             f"{hotel_name} had unexpected data counts: "
-            f"revenue={len(revenue)}, adr={len(adr)}, "
-            f"revpar={len(revpar)}, rooms={len(rooms)}."
+            f"revenue={len(revenue)}, "
+            f"adr={len(adr)}, "
+            f"revpar={len(revpar)}, "
+            f"rooms={len(rooms)}.\n\n"
+            f"Message found:\n{text}"
         )
 
     return {
@@ -107,18 +114,27 @@ def extract_standard_property(hotel_name: str, text: str) -> dict:
 
 
 def extract_madison_properties(text: str) -> list[dict]:
-    parts = re.split(
+    sections = re.split(
         r"\bSouth Beach\b",
         text,
         maxsplit=1,
         flags=re.IGNORECASE,
     )
 
-    if len(parts) != 2:
-        raise RuntimeError("Could not separate Madison Beach and South Beach.")
+    if len(sections) != 2:
+        raise RuntimeError(
+            "Could not separate Madison Beach and South Beach."
+        )
 
-    madison = extract_standard_property("Madison Beach", parts[0])
-    south_beach = extract_standard_property("South Beach", parts[1])
+    madison = extract_standard_property(
+        "Madison Beach",
+        sections[0],
+    )
+
+    south_beach = extract_standard_property(
+        "South Beach",
+        sections[1],
+    )
 
     return [madison, south_beach]
 
@@ -144,26 +160,41 @@ def signed_percent(value: float) -> str:
     return f"{sign}{abs(value):.1f}%"
 
 
-def room_difference(current: int, prior: int) -> str:
-    difference = current - prior
+def signed_number(value: int) -> str:
+    if value > 0:
+        return f"+{value}"
 
-    if difference > 0:
-        return f"+{difference}"
-
-    return str(difference)
+    return str(value)
 
 
 messages = {
-    hotel_name: latest_sales_message(hotel_name, channel_id)
+    hotel_name: latest_sales_message(
+        hotel_name,
+        channel_id,
+    )
     for hotel_name, channel_id in CHANNELS.items()
 }
 
 rows = [
-    extract_standard_property("Fenwick", messages["Fenwick"]),
-    extract_standard_property("Kokomo", messages["Kokomo"]),
-    *extract_madison_properties(messages["Madison"]),
-    extract_standard_property("Park Place", messages["Park Place"]),
-    extract_standard_property("Spinnaker", messages["Spinnaker"]),
+    extract_standard_property(
+        "Fenwick",
+        messages["Fenwick"],
+    ),
+    extract_standard_property(
+        "Kokomo",
+        messages["Kokomo"],
+    ),
+    *extract_madison_properties(
+        messages["Madison"],
+    ),
+    extract_standard_property(
+        "Park Place",
+        messages["Park Place"],
+    ),
+    extract_standard_property(
+        "Spinnaker",
+        messages["Spinnaker"],
+    ),
 ]
 
 dates = extract_dates(messages["Fenwick"])
@@ -175,17 +206,16 @@ else:
     current_date = datetime.now().strftime("%m/%d/%Y")
     prior_date = "prior year"
 
-table_lines = []
 
-header = (
-    f"{'Hotel':<16}"
-    f"{'Revenue 26 / 25':>27}"
-    f"{'ADR 26 / 25':>23}"
-    f"{'RevPAR 26 / 25':>25}"
-    f"{'Rooms 26 / 25':>18}"
-)
-
-table_lines.append(header)
+table_lines = [
+    (
+        f"{'Hotel':<16}"
+        f"{'Revenue 26 / 25':>31}"
+        f"{'ADR 26 / 25':>27}"
+        f"{'RevPAR 26 / 25':>29}"
+        f"{'Rooms 26 / 25':>18}"
+    )
+]
 
 for row in rows:
     revenue_pct = percent_change(
@@ -221,58 +251,66 @@ for row in rows:
         f"({signed_percent(revpar_pct)})"
     )
 
+    rooms_change = (
+        row["rooms_2026"] - row["rooms_2025"]
+    )
+
     rooms_text = (
         f"{row['rooms_2026']} / "
         f"{row['rooms_2025']} "
-        f"({room_difference(row['rooms_2026'], row['rooms_2025'])})"
+        f"({signed_number(rooms_change)})"
     )
 
     table_lines.append(
         f"{row['hotel']:<16}"
-        f"{revenue_text:>27}"
-        f"{adr_text:>23}"
-        f"{revpar_text:>25}"
+        f"{revenue_text:>31}"
+        f"{adr_text:>27}"
+        f"{revpar_text:>29}"
         f"{rooms_text:>18}"
     )
 
-five_hotel_rows = [
-    row
-    for row in rows
-    if row["hotel"] != "South Beach"
-]
 
 total_revenue_2026 = sum(
     row["revenue_2026"]
-    for row in five_hotel_rows
-) + next(
-    row["revenue_2026"]
     for row in rows
-    if row["hotel"] == "South Beach"
 )
 
 total_revenue_2025 = sum(
     row["revenue_2025"]
-    for row in five_hotel_rows
-) + next(
-    row["revenue_2025"]
     for row in rows
-    if row["hotel"] == "South Beach"
 )
 
-total_revenue_change = total_revenue_2026 - total_revenue_2025
+total_revenue_change = (
+    total_revenue_2026 - total_revenue_2025
+)
+
 total_revenue_pct = percent_change(
     total_revenue_2026,
     total_revenue_2025,
 )
 
-total_rooms_2026 = sum(row["rooms_2026"] for row in rows)
-total_rooms_2025 = sum(row["rooms_2025"] for row in rows)
-total_room_change = total_rooms_2026 - total_rooms_2025
+total_rooms_2026 = sum(
+    row["rooms_2026"]
+    for row in rows
+)
+
+total_rooms_2025 = sum(
+    row["rooms_2025"]
+    for row in rows
+)
+
+total_room_change = (
+    total_rooms_2026 - total_rooms_2025
+)
+
 
 revenue_changes = [
     {
         "hotel": row["hotel"],
-        "change": row["revenue_2026"] - row["revenue_2025"],
+        "change": (
+            row["revenue_2026"]
+            - row["revenue_2025"]
+        ),
     }
     for row in rows
 ]
@@ -287,35 +325,43 @@ largest_decline = min(
     key=lambda item: item["change"],
 )
 
-direction = "increased" if total_revenue_change >= 0 else "decreased"
 
-room_wording = (
-    f"despite selling {abs(total_room_change)} fewer room"
-    if total_room_change < 0
-    else f"while selling {total_room_change} more room"
-    if total_room_change > 0
-    else "while selling the same number of rooms"
-)
+if total_revenue_change >= 0:
+    revenue_direction = "increased"
+else:
+    revenue_direction = "decreased"
 
-if abs(total_room_change) != 1 and total_room_change != 0:
-    room_wording += "s"
+if total_room_change > 0:
+    room_text = (
+        f"while selling {total_room_change} more "
+        f"{'room' if total_room_change == 1 else 'rooms'} overall"
+    )
+elif total_room_change < 0:
+    room_text = (
+        f"despite selling {abs(total_room_change)} fewer "
+        f"{'room' if abs(total_room_change) == 1 else 'rooms'} overall"
+    )
+else:
+    room_text = "while selling the same number of rooms overall"
+
 
 management_read = (
-    f"*Management read:* Revenue {direction} "
-    f"*{abs(total_revenue_pct):.1f}%* {room_wording} overall."
+    f"*Management read:* Revenue {revenue_direction} "
+    f"*{abs(total_revenue_pct):.1f}%* {room_text}."
 )
 
 if largest_gain["change"] > 0:
     management_read += (
-        f" {largest_gain['hotel']} drove the gain, up "
-        f"*{money(largest_gain['change'])}*."
+        f" {largest_gain['hotel']} was the largest positive driver, "
+        f"up *{money(largest_gain['change'])}*."
     )
 
 if largest_decline["change"] < 0:
     management_read += (
-        f" {largest_decline['hotel']} was the largest drag, down "
-        f"*{money(abs(largest_decline['change']))}*."
+        f" {largest_decline['hotel']} was the largest drag, "
+        f"down *{money(abs(largest_decline['change']))}*."
     )
+
 
 output = (
     f"*Expanded Daily Sales Summary — "
@@ -327,8 +373,9 @@ output = (
     f"*{signed_money(total_revenue_change)} "
     f"({signed_percent(total_revenue_pct)})*\n"
     f"*Total rooms sold:* "
-    f"*{total_rooms_2026}* vs *{total_rooms_2025}* "
-    f"— {room_difference(total_rooms_2026, total_rooms_2025)} rooms\n\n"
+    f"*{total_rooms_2026}* vs "
+    f"*{total_rooms_2025}* — "
+    f"{signed_number(total_room_change)} rooms\n\n"
     f"{management_read}\n\n"
     "_South Beach is shown separately for operating detail but remains "
     "included in the Madison group and five-hotel revenue total._"
