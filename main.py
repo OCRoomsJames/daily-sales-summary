@@ -1,6 +1,8 @@
 import os
 import re
+
 from slack_sdk import WebClient
+
 
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
 
@@ -13,63 +15,73 @@ HOTELS = {
 }
 
 
-def latest_sales_message(channel_id):
+def latest_sales_message(hotel_name: str, channel_id: str) -> str:
     response = client.conversations_history(
         channel=channel_id,
-        limit=10
+        limit=100,
     )
 
-    for msg in response["messages"]:
-        if msg.get("subtype"):
+    for message in response.get("messages", []):
+        if message.get("subtype"):
             continue
 
-        text = msg.get("text", "")
+        text = message.get("text", "")
 
-        if "Rev:" in text:
+        # Matches Rev, Rev:, Revenue, or Revenue:
+        if re.search(r"\bRev(?:enue)?\b", text, re.IGNORECASE):
             return text
 
-    raise Exception(f"No sales message found for {channel_id}")
+    raise RuntimeError(
+        f"No sales message containing Rev or Revenue was found for {hotel_name}."
+    )
 
 
-def extract_revenues(text):
-    matches = re.findall(r"Rev:\s*\$?([\d,]+\.\d+|[\d,]+)", text)
+def extract_revenues(hotel_name: str, text: str) -> tuple[float, float]:
+    # Matches:
+    # Rev: $17,624.09
+    # Revenue: $29,683.54
+    # Revenue      $46,172.34
+    # Rev: $13,563
+    matches = re.findall(
+        r"\bRev(?:enue)?\b\s*:?\s*\$?\s*([\d,]+(?:\.\d+)?)",
+        text,
+        flags=re.IGNORECASE,
+    )
 
-    values = [
-        float(v.replace(",", ""))
-        for v in matches
-    ]
+    values = [float(value.replace(",", "")) for value in matches]
 
     if len(values) == 2:
-        return values[1], values[0]
+        revenue_2025 = values[0]
+        revenue_2026 = values[1]
+        return revenue_2026, revenue_2025
 
     if len(values) == 4:
-        return (
-            values[1] + values[3],
-            values[0] + values[2],
-        )
+        # Madison Beach and South Beach are posted together.
+        revenue_2025 = values[0] + values[2]
+        revenue_2026 = values[1] + values[3]
+        return revenue_2026, revenue_2025
 
-    raise Exception(
-        f"Unexpected number of Rev values ({len(values)}).\n\n{text}"
+    raise RuntimeError(
+        f"{hotel_name} contained {len(values)} revenue values instead of 2 or 4.\n\n"
+        f"Message found:\n{text}"
     )
 
 
 output = "*Daily Sales Summary TEST*\n\n"
 
-for hotel, channel in HOTELS.items():
-
-    message = latest_sales_message(channel)
-
-    rev2026, rev2025 = extract_revenues(message)
+for hotel_name, channel_id in HOTELS.items():
+    message = latest_sales_message(hotel_name, channel_id)
+    revenue_2026, revenue_2025 = extract_revenues(hotel_name, message)
 
     output += (
-        f"*{hotel}*\n"
-        f"2026: ${rev2026:,.2f}\n"
-        f"2025: ${rev2025:,.2f}\n\n"
+        f"*{hotel_name}*\n"
+        f"2026: ${revenue_2026:,.2f}\n"
+        f"2025: ${revenue_2025:,.2f}\n\n"
     )
 
 client.chat_postMessage(
     channel=os.environ["SLACK_SUMMARY_CHANNEL"],
-    text=output
+    text=output,
 )
 
 print(output)
