@@ -127,8 +127,14 @@ def extract_madison_properties(text: str) -> list[dict]:
         )
 
     return [
-        extract_standard_property("Madison Beach", sections[0]),
-        extract_standard_property("South Beach", sections[1]),
+        extract_standard_property(
+            "Madison Beach",
+            sections[0],
+        ),
+        extract_standard_property(
+            "South Beach",
+            sections[1],
+        ),
     ]
 
 
@@ -174,7 +180,7 @@ def signed_number(value: int) -> str:
     return str(value)
 
 
-def indicator(change: float, flat_threshold: float = 1.0) -> str:
+def performance_indicator(change: float, flat_threshold: float = 1.0) -> str:
     if abs(change) <= flat_threshold:
         return "⚪"
 
@@ -184,7 +190,7 @@ def indicator(change: float, flat_threshold: float = 1.0) -> str:
     return "🔴"
 
 
-def room_indicator(change: int) -> str:
+def rooms_indicator(change: int) -> str:
     if change == 0:
         return "⚪"
 
@@ -222,18 +228,44 @@ def join_names(names: list[str]) -> str:
     return f"{', '.join(names[:-1])}, and {names[-1]}"
 
 
+def raw_cell(text: str) -> dict:
+    return {
+        "type": "raw_text",
+        "text": text,
+    }
+
+
 messages = {
-    hotel_name: latest_sales_message(hotel_name, channel_id)
+    hotel_name: latest_sales_message(
+        hotel_name,
+        channel_id,
+    )
     for hotel_name, channel_id in CHANNELS.items()
 }
 
+
 rows = [
-    extract_standard_property("Fenwick", messages["Fenwick"]),
-    extract_standard_property("Kokomo", messages["Kokomo"]),
-    *extract_madison_properties(messages["Madison"]),
-    extract_standard_property("Park Place", messages["Park Place"]),
-    extract_standard_property("Spinnaker", messages["Spinnaker"]),
+    extract_standard_property(
+        "Fenwick",
+        messages["Fenwick"],
+    ),
+    extract_standard_property(
+        "Kokomo",
+        messages["Kokomo"],
+    ),
+    *extract_madison_properties(
+        messages["Madison"],
+    ),
+    extract_standard_property(
+        "Park Place",
+        messages["Park Place"],
+    ),
+    extract_standard_property(
+        "Spinnaker",
+        messages["Spinnaker"],
+    ),
 ]
+
 
 dates = extract_dates(messages["Fenwick"])
 
@@ -247,7 +279,8 @@ else:
 
 for row in rows:
     row["revenue_change"] = (
-        row["revenue_2026"] - row["revenue_2025"]
+        row["revenue_2026"]
+        - row["revenue_2025"]
     )
 
     row["revenue_pct"] = percent_change(
@@ -266,7 +299,8 @@ for row in rows:
     )
 
     row["rooms_change"] = (
-        row["rooms_2026"] - row["rooms_2025"]
+        row["rooms_2026"]
+        - row["rooms_2025"]
     )
 
 
@@ -281,7 +315,8 @@ total_revenue_2025 = sum(
 )
 
 total_revenue_change = (
-    total_revenue_2026 - total_revenue_2025
+    total_revenue_2026
+    - total_revenue_2025
 )
 
 total_revenue_pct = percent_change(
@@ -300,8 +335,10 @@ total_rooms_2025 = sum(
 )
 
 total_rooms_change = (
-    total_rooms_2026 - total_rooms_2025
+    total_rooms_2026
+    - total_rooms_2025
 )
+
 
 park_place_beach = extract_beach_income(
     messages["Park Place"],
@@ -314,7 +351,8 @@ spinnaker_beach = extract_beach_income(
 )
 
 combined_beach = (
-    park_place_beach + spinnaker_beach
+    park_place_beach
+    + spinnaker_beach
 )
 
 
@@ -344,15 +382,18 @@ else:
         f"Revenue decreased *{abs(total_revenue_pct):.1f}%*"
     )
 
+
 if total_rooms_change > 0:
     overall_sentence += (
         f" while selling *{number_word(total_rooms_change)} "
-        f"additional {'room' if total_rooms_change == 1 else 'rooms'}*."
+        f"additional "
+        f"{'room' if total_rooms_change == 1 else 'rooms'}*."
     )
 elif total_rooms_change < 0:
     overall_sentence += (
         f" while selling *{number_word(abs(total_rooms_change))} "
-        f"fewer {'room' if abs(total_rooms_change) == 1 else 'rooms'}*."
+        f"fewer "
+        f"{'room' if abs(total_rooms_change) == 1 else 'rooms'}*."
     )
 else:
     overall_sentence += (
@@ -403,24 +444,24 @@ if largest_decline["revenue_change"] < 0:
         f"*{abs(largest_decline['revenue_pct']):.1f}%*"
     )
 
-    details = []
+    decline_details = []
 
     if largest_decline["adr_pct"] < -1.0:
-        details.append(
+        decline_details.append(
             f"ADR down "
             f"*{abs(largest_decline['adr_pct']):.1f}%*"
         )
 
     if largest_decline["rooms_change"] < 0:
-        details.append(
+        decline_details.append(
             f"occupancy off "
             f"*{number_word(abs(largest_decline['rooms_change']))} "
             f"{'room' if abs(largest_decline['rooms_change']) == 1 else 'rooms'}*"
         )
 
-    if details:
+    if decline_details:
         decline_sentence += (
-            f", with {' and '.join(details)}."
+            f", with {' and '.join(decline_details)}."
         )
     else:
         decline_sentence += "."
@@ -444,52 +485,83 @@ if other_flat_hotels:
     )
 
 
-table_lines = [
-    (
-        f"{'Hotel':<16}"
-        f"{'Revenue':>25}"
-        f"{'ADR':>20}"
-        f"{'RevPAR':>22}"
-        f"{'Rooms':>15}"
-    )
+table_rows = [
+    [
+        raw_cell("Hotel"),
+        raw_cell("Revenue 26 / 25"),
+        raw_cell("ADR 26 / 25"),
+        raw_cell("RevPAR 26 / 25"),
+        raw_cell("Rooms 26 / 25"),
+    ]
 ]
 
+
 for row in rows:
-    revenue_text = (
+    revenue_cell = (
         f"{money(row['revenue_2026'])} / "
-        f"{money(row['revenue_2025'])} "
-        f"{indicator(row['revenue_pct'])}"
+        f"{money(row['revenue_2025'])}\n"
+        f"{performance_indicator(row['revenue_pct'])} "
         f"{signed_percent(row['revenue_pct'])}"
     )
 
-    adr_text = (
+    adr_cell = (
         f"{money(row['adr_2026'])} / "
-        f"{money(row['adr_2025'])} "
-        f"{indicator(row['adr_pct'])}"
+        f"{money(row['adr_2025'])}\n"
+        f"{performance_indicator(row['adr_pct'])} "
         f"{signed_percent(row['adr_pct'])}"
     )
 
-    revpar_text = (
+    revpar_cell = (
         f"{money(row['revpar_2026'])} / "
-        f"{money(row['revpar_2025'])} "
-        f"{indicator(row['revpar_pct'])}"
+        f"{money(row['revpar_2025'])}\n"
+        f"{performance_indicator(row['revpar_pct'])} "
         f"{signed_percent(row['revpar_pct'])}"
     )
 
-    rooms_text = (
+    rooms_cell = (
         f"{row['rooms_2026']} / "
-        f"{row['rooms_2025']} "
-        f"{room_indicator(row['rooms_change'])}"
+        f"{row['rooms_2025']}\n"
+        f"{rooms_indicator(row['rooms_change'])} "
         f"{signed_number(row['rooms_change'])}"
     )
 
-    table_lines.append(
-        f"{row['hotel']:<16}"
-        f"{revenue_text:>25}"
-        f"{adr_text:>20}"
-        f"{revpar_text:>22}"
-        f"{rooms_text:>15}"
+    table_rows.append(
+        [
+            raw_cell(row["hotel"]),
+            raw_cell(revenue_cell),
+            raw_cell(adr_cell),
+            raw_cell(revpar_cell),
+            raw_cell(rooms_cell),
+        ]
     )
+
+
+table_block = {
+    "type": "table",
+    "column_settings": [
+        {
+            "align": "left",
+            "is_wrapped": True,
+        },
+        {
+            "align": "right",
+            "is_wrapped": True,
+        },
+        {
+            "align": "right",
+            "is_wrapped": True,
+        },
+        {
+            "align": "right",
+            "is_wrapped": True,
+        },
+        {
+            "align": "right",
+            "is_wrapped": True,
+        },
+    ],
+    "rows": table_rows,
+}
 
 
 blocks = [
@@ -506,17 +578,14 @@ blocks = [
         "elements": [
             {
                 "type": "mrkdwn",
-                "text": f"*{current_date}* compared with *{prior_date}*",
+                "text": (
+                    f"*{current_date}* compared with "
+                    f"*{prior_date}*"
+                ),
             }
         ],
     },
-    {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": f"```{chr(10).join(table_lines)}```",
-        },
-    },
+    table_block,
     {
         "type": "section",
         "fields": [
@@ -526,7 +595,7 @@ blocks = [
                     f"*Total Revenue*\n"
                     f"{money(total_revenue_2026)} vs "
                     f"{money(total_revenue_2025)}\n"
-                    f"{indicator(total_revenue_pct)} "
+                    f"{performance_indicator(total_revenue_pct)} "
                     f"*{signed_money(total_revenue_change)} "
                     f"({signed_percent(total_revenue_pct)})*"
                 ),
@@ -537,7 +606,7 @@ blocks = [
                     f"*Total Rooms Sold*\n"
                     f"{total_rooms_2026} vs "
                     f"{total_rooms_2025}\n"
-                    f"{room_indicator(total_rooms_change)} "
+                    f"{rooms_indicator(total_rooms_change)} "
                     f"*{signed_number(total_rooms_change)}*"
                 ),
             },
