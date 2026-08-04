@@ -25,5 +25,9 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_SUMMARY_CHANNEL: ${{ secrets.SLACK_SUMMARY_CHANNEL }}
+          SLACK_FENWICK_CHANNEL: ${{ secrets.SLACK_FENWICK_CHANNEL }}
+          SLACK_KOKOMO_CHANNEL: ${{ secrets.SLACK_KOKOMO_CHANNEL }}
+          SLACK_MADISON_CHANNEL: ${{ secrets.SLACK_MADISON_CHANNEL }}
+          SLACK_PARK_PLACE_CHANNEL: ${{ secrets.SLACK_PARK_PLACE_CHANNEL }}
           SLACK_SPINNAKER_CHANNEL: ${{ secrets.SLACK_SPINNAKER_CHANNEL }}
         run: python main.py
