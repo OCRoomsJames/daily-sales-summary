@@ -3,7 +3,7 @@ name: Daily Sales Summary
 on:
   workflow_dispatch:
   schedule:
-    - cron: "45 12 * * *"
+    - cron: "*/5 * * * *"
 
 jobs:
   summary:
