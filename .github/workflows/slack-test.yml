@@ -1,34 +1,33 @@
 name: Daily Sales Summary
 
 on:
-  schedule:
-    - cron: '45 12 * * *'
   workflow_dispatch:
+  schedule:
+    - cron: "45 12 * * *"
 
 jobs:
   summary:
     runs-on: ubuntu-latest
 
-    env:
-      TZ: America/New_York
-
-      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
-      SLACK_FENWICK_CHANNEL: ${{ secrets.SLACK_FENWICK_CHANNEL }}
-      SLACK_KOKOMO_CHANNEL: ${{ secrets.SLACK_KOKOMO_CHANNEL }}
-      SLACK_MADISON_CHANNEL: ${{ secrets.SLACK_MADISON_CHANNEL }}
-      SLACK_PARK_PLACE_CHANNEL: ${{ secrets.SLACK_PARK_PLACE_CHANNEL }}
-      SLACK_SPINNAKER_CHANNEL: ${{ secrets.SLACK_SPINNAKER_CHANNEL }}
-      SLACK_SUMMARY_CHANNEL: ${{ secrets.SLACK_SUMMARY_CHANNEL }}
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run Daily Sales Summary
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SUMMARY_CHANNEL: ${{ secrets.SLACK_SUMMARY_CHANNEL }}
+          SLACK_FENWICK_CHANNEL: ${{ secrets.SLACK_FENWICK_CHANNEL }}
+          SLACK_KOKOMO_CHANNEL: ${{ secrets.SLACK_KOKOMO_CHANNEL }}
+          SLACK_MADISON_CHANNEL: ${{ secrets.SLACK_MADISON_CHANNEL }}
+          SLACK_PARK_PLACE_CHANNEL: ${{ secrets.SLACK_PARK_PLACE_CHANNEL }}
+          SLACK_SPINNAKER_CHANNEL: ${{ secrets.SLACK_SPINNAKER_CHANNEL }}
         run: python main.py
