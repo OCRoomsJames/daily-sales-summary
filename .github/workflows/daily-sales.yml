@@ -1,0 +1,34 @@
+name: Automated Daily Sales Summary
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "45 8 * * *"
+      timezone: "America/New_York"
+
+jobs:
+  daily-sales-summary:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate and post daily summary
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SUMMARY_CHANNEL: ${{ secrets.SLACK_SUMMARY_CHANNEL }}
+          SLACK_FENWICK_CHANNEL: ${{ secrets.SLACK_FENWICK_CHANNEL }}
+          SLACK_KOKOMO_CHANNEL: ${{ secrets.SLACK_KOKOMO_CHANNEL }}
+          SLACK_MADISON_CHANNEL: ${{ secrets.SLACK_MADISON_CHANNEL }}
+          SLACK_PARK_PLACE_CHANNEL: ${{ secrets.SLACK_PARK_PLACE_CHANNEL }}
+          SLACK_SPINNAKER_CHANNEL: ${{ secrets.SLACK_SPINNAKER_CHANNEL }}
+        run: python main.py
