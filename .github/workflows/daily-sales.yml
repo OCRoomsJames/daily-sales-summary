@@ -3,8 +3,7 @@ name: Automated Daily Sales Summary
 on:
   workflow_dispatch:
   schedule:
-    - cron: "45 8 * * *"
-      timezone: "America/New_York"
+    - cron: "45 12 * * *"
 
 jobs:
   daily-sales-summary:
