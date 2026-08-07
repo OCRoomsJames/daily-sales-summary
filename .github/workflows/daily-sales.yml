@@ -2,11 +2,45 @@ name: Automated Daily Sales Summary
 
 on:
   workflow_dispatch:
+
   schedule:
-    - cron: "45 12 * * *"
+    # Every 10 minutes from 8:30–9:20 AM Eastern (12:30–13:20 UTC during DST)
+    - cron: "30,40,50 12 * * *"
+    - cron: "0,10,20 13 * * *"
 
 jobs:
-  daily-sales-summary:
+  precheck:
+    runs-on: ubuntu-latest
+
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check whether summary should run
+        id: check
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SUMMARY_CHANNEL: ${{ secrets.SLACK_SUMMARY_CHANNEL }}
+          SLACK_FENWICK_CHANNEL: ${{ secrets.SLACK_FENWICK_CHANNEL }}
+        run: python precheck.py
+
+  summary:
+    needs: precheck
+
+    if: needs.precheck.outputs.should_run == 'true'
+
     runs-on: ubuntu-latest
 
     steps:
