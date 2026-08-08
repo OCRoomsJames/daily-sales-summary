@@ -67,16 +67,18 @@ if event_name == "workflow_dispatch":
     set_output(True, "Manual run requested; proceeding.")
     raise SystemExit(0)
 
-# Scheduled attempts are accepted only around the intended 8:45 AM Eastern window.
+# GitHub's scheduler can be delayed substantially. Accept delayed scheduled
+# attempts through late morning, while duplicate protection ensures only one
+# report is posted for each report date.
 now_et = datetime.now(ZoneInfo("America/New_York"))
 minutes_after_midnight = now_et.hour * 60 + now_et.minute
 window_start = 8 * 60 + 30
-window_end = 9 * 60 + 30
+window_end = 11 * 60 + 30
 
 if not (window_start <= minutes_after_midnight <= window_end):
     set_output(
         False,
-        f"Scheduled attempt arrived at {now_et:%I:%M %p ET}, outside the 8:30-9:30 AM window; skipping.",
+        f"Scheduled attempt arrived at {now_et:%I:%M %p ET}, outside the 8:30-11:30 AM window; skipping.",
     )
     raise SystemExit(0)
 
