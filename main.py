@@ -70,17 +70,17 @@ def extract_rooms(text: str) -> list[int]:
 def extract_standard_property(hotel_name: str, text: str) -> dict:
     revenue = extract_money_values(
         text,
-        r"\bRev(?:enue)?\b\s*:?\s*\$?\s*([\d,]+(?:\.\d+)?)",
+        r"\bRev(?:enue)?\b\s*:?\s*\$?\s*(-?[\d,]+(?:\.\d+)?)",
     )
 
     adr = extract_money_values(
         text,
-        r"\bADR\b\s*:?\s*\$?\s*([\d,]+(?:\.\d+)?)",
+        r"\bADR\b\s*:?\s*\$?\s*(-?[\d,]+(?:\.\d+)?)",
     )
 
     revpar = extract_money_values(
         text,
-        r"\b(?:Rev\s*Par|RevPAR)\b\s*:?\s*\$?\s*([\d,]+(?:\.\d+)?)",
+        r"\b(?:Rev\s*Par|RevPAR)\b\s*:?\s*\$?\s*(-?[\d,]+(?:\.\d+)?)",
     )
 
     rooms = extract_rooms(text)
